@@ -3,8 +3,12 @@ module pe #(
     parameter int ACCUM_WIDTH = 24
 ) (
     input logic clk, reset_n,
+    input logic load_weights,
+    //input logic load_accum,
+
     input logic signed [DATA_WIDTH-1:0] a_in,
     input logic signed [DATA_WIDTH-1:0] b_in,
+    input logic signed [ACCUM_WIDTH-1:0] accumulator_in,
 
     output logic signed [DATA_WIDTH-1:0] a_out,
     output logic signed [DATA_WIDTH-1:0] b_out,
@@ -19,11 +23,12 @@ always_ff @(posedge clk) begin
         a <= '0;
         b <= '0;
         accum <= '0;
+    end else if (load_weights) begin
+        b <= b_in;
     end else begin
         a <= a_in;
-        b <= b_in;
         //current inputs so product isnt delayed by 1 cycle
-        accum <= accum + a_in * b_in;
+        accum <= accumulator_in + a_in * b;
     end
 end
 
