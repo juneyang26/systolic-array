@@ -1,51 +1,60 @@
 module systolic_controller (
     parameter int MEM_WORD_SIZE = 64,
     parameter int DATA_WIDTH = 8,
-    parameter int ARRAY_SIZE = 2;
-    parameter int ACCUM_WIDTH = 24,
+    parameter int ARRAY_SIZE = 2,
+    parameter int ACCUM_WIDTH = 24
 ) (
     input logic clk,
     input logic reset_n,
 
     // memory access (TODO LATER)
 
-    input logic [MEM_WORD_SIZE-1:0] r_data;
+    input logic [MEM_WORD_SIZE-1:0] r_data,
 
     output logic load_weights,
+    output logic signed [DATA_WIDTH-1:0] weights_out [ARRAY_SIZE-1:0];
 );
     
     // states
-    typedef enum logic [1:0] {
+    typedef enum logic [2:0] {
         S_IDLE,
         S_READ_WEIGHTS,
         S_LOAD_WEIGHTS,
+        S_READ_A,
         S_COMPUTE,
         S_GET_RESULTS
     } state_t;
 
     state_t state, next;
+
+    logic [DATA_WIDTH-1:0] counter;
     
     // matrix registers
-    logic [DATA_WIDTH-1:0]       matrix_A[ARRAY_SIZE-1:0][ARRAY_SIZE-1:0];
-    logic [DATA_WIDTH-1:0] matrix_weights[ARRAY_SIZE-1:0][ARRAY_SIZE-1:0];
+    logic signed [DATA_WIDTH-1:0]       matrix_A[ARRAY_SIZE-1:0][ARRAY_SIZE-1:0];
+    logic signed [DATA_WIDTH-1:0] matrix_weights[ARRAY_SIZE-1:0][ARRAY_SIZE-1:0];
 
     always_comb begin 
+        next = state; // default
+
         case (state)
-            S_IDLE:  next = S_READ_WEIGHTS;
+            S_IDLE:         next = S_READ_WEIGHTS;
             S_READ_WEIGHTS: next = S_LOAD_WEIGHTS;
-            S_LOAD_WEIGHTS: next = S_COMPUTE;
-            S_COMPUTE: next = S_GET_RESULTS;
+            S_LOAD_WEIGHTS: if (counter == ARRAY_SIZE - 1) next = S_READ_A;
+            S_READ_A:       next = S_COMPUTE;
+            S_COMPUTE:      next = S_GET_RESULTS;
         
-            default: next = S_IDLE;
+            default:        next = S_IDLE;
         endcase
     end
 
     always_ff @(posedge clk) begin 
         if (!reset_n) begin
             state <= S_IDLE;
+            counter <= '0;
             matrix_A <= '0;
             matrix_weights <= '0;
         end
+
         else begin 
             state <= next; // goto next state after
             case (state) 
@@ -55,17 +64,68 @@ module systolic_controller (
                 end
                 S_READ_WEIGHTS: begin
                     //matrix_weights[0][0] = r_data[7:0];
-                    genvar row, col;
-                    generate
-                        for (row = 0; row < ARRAY_SIZE; row++) begin
-                            for (col = 0; col < ARRAY_SIZE; col++) begin
-                                matrix_weights[row][col] <= r_data[]
-                            end
+
+                    // read and store the weights in registers
+                    for (int row = 0; row < ARRAY_SIZE; row++) begin
+                        for (int col = 0; col < ARRAY_SIZE; col++) begin
+                            // [<start_bit> +: <width>]  part-select increments from start-bit
+                            // [<start_bit> -: <width>]  part-select decrements from start-bit
+                            matrix_weights[row][col] <= r_data[(row * ARRAY_SIZE + col) * DATA_WIDTH +: DATA_WIDTH]; // read weights matrix
                         end
-                    endgenerate
+                    end
+
                 end
+                S_LOAD_WEIGHTS: begin 
+                    //load_weights <= 1'b1;
+                    // N rows, N cycles to load all weights
+                    counter <= counter + 1;
+
+                end
+                S_READ_A: begin 
+                    counter <= '0;
+
+                    // read and store the matrix A in registers
+                    for (int row = 0; row < ARRAY_SIZE; row++) begin
+                        for (int col = 0; col < ARRAY_SIZE; col++) begin
+                            // [<start_bit> +: <width>]  part-select increments from start-bit
+                            // [<start_bit> -: <width>]  part-select decrements from start-bit
+                            matrix_A[row][col] <= r_data[(row * ARRAY_SIZE + col) * DATA_WIDTH +: DATA_WIDTH]; // read matrix A
+                        end
+                    end
+
+                end
+                S_LOAD_WEIGHTS: 
             endcase
         end
+    end
+
+    
+
+    // comb output logic
+    always_comb begin
+        // default values
+        load_weights = '0;
+
+        case (state) 
+            S_IDLE: begin
+                
+            end
+            S_READ_WEIGHTS: begin 
+
+            end
+            S_LOAD_WEIGHTS: begin 
+                load_weights = 1'b1;
+                for (int i = 0; i < ARRAY_SIZE; i++) begin
+                    weights_out[i] = matrix_weights[counter][i];
+                end
+            end
+            S_READ_A: begin
+                
+            end
+            S_COMPUTE: begin
+                
+            end
+        endcase
     end
 
 endmodule
