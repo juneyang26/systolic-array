@@ -13,6 +13,7 @@ module systolic_controller (
 
     output logic load_weights,
     output logic signed [DATA_WIDTH-1:0] weights_out [ARRAY_SIZE-1:0];
+    output logic signed [DATA_WIDTH-1:0]       A_out [ARRAY_SIZE-1:0];
 );
     
     // states
@@ -40,8 +41,9 @@ module systolic_controller (
             S_IDLE:         next = S_READ_WEIGHTS;
             S_READ_WEIGHTS: next = S_LOAD_WEIGHTS;
             S_LOAD_WEIGHTS: if (counter == ARRAY_SIZE - 1) next = S_READ_A;
-            S_READ_A:       next = S_COMPUTE;
-            S_COMPUTE:      next = S_GET_RESULTS;
+            S_READ_A:       next = S_READ_A;
+            S_COMPUTE:      if (counter == 2*ARRAY_SIZE - 2) next = S_GET_RESULTS;
+            S_GET_RESULTS:  next = S_IDLE; // change logic once SRAM/addresses included
         
             default:        next = S_IDLE;
         endcase
@@ -94,7 +96,13 @@ module systolic_controller (
                     end
 
                 end
-                S_LOAD_WEIGHTS: 
+                S_COMPUTE: begin
+                    counter <= counter + 1;
+                end
+                S_GET_RESULTS: begin
+                    counter <= '0;
+                end
+
             endcase
         end
     end
@@ -111,7 +119,7 @@ module systolic_controller (
                 
             end
             S_READ_WEIGHTS: begin 
-
+                // need address later with SRAM
             end
             S_LOAD_WEIGHTS: begin 
                 load_weights = 1'b1;
@@ -120,9 +128,27 @@ module systolic_controller (
                 end
             end
             S_READ_A: begin
-                
+                // address later 
             end
             S_COMPUTE: begin
+                for (int row = 0; row < ARRAY_SIZE; row++) begin
+                    int row_stream = counter - row; // if counter = 2, then rows 0,1,2 should have elements streaming in, row 3 and onward should be bubble
+                    
+                    // 2 (counter) - 3 (curr row) = -1 -> do not stream in, bubble
+
+                    // 0 (counter) - 0 (curr row) = 0  -> stream in 1st elememt of 1st col
+                    // 1 (counter) - 0 (curr row) = 1  -> stream in 2nd element of 1st col
+                    // 2 (counter) - 0 (curr row) = 2 >= ARRAY_SIZE -> out of elements to stream in
+                    // 2 (counter) - 1 (next row) = 1  -> stream in 2nd element of 2nd col
+                    
+                    if (row_stream >= 0 && row_stream < ARRAY_SIZE) begin
+                        A_out[row] = matrix_A[row_stream][row];
+                    end else begin
+                        A_out[row] = '0;
+                    end
+                end  
+            end
+            S_GET_RESULTS: begin
                 
             end
         endcase
