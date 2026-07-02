@@ -1,3 +1,5 @@
+// testing only the systolic array module
+
 module systolic_array_tb #(
     parameter int DATA_WIDTH = 8,
     parameter int ACCUM_WIDTH = 24,
