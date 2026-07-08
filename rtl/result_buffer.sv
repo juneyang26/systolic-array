@@ -5,10 +5,10 @@ module result_buffer #(
 ) (
     input logic clk,
     input logic reset_n,
-    input logic shift_en [ARRAY_SIZE], // shift enable signal for each col
-    input logic signed [ACCUM_WIDTH-1:0] accumulator_in [ARRAY_SIZE-1:0]
+    input logic shift_en [ARRAY_SIZE-1:0], // shift enable signal for each col
+    input logic signed [ACCUM_WIDTH-1:0] accumulator_in [ARRAY_SIZE-1:0],
 
-    output logic signed [ACCUM_WIDTH-1:0] result_out [ARRAY_SIZE-1:0][ARRAY_SIZE-1:0]; // resultant matrix;
+    output logic signed [ACCUM_WIDTH-1:0] result_out [ARRAY_SIZE-1:0][ARRAY_SIZE-1:0] // resultant matrix;
 
 );
 

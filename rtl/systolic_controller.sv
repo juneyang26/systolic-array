@@ -1,4 +1,4 @@
-module systolic_controller (
+module systolic_controller #(
     parameter int MEM_WORD_SIZE = 64,
     parameter int DATA_WIDTH = 8,
     parameter int ARRAY_SIZE = 2,
@@ -11,9 +11,17 @@ module systolic_controller (
 
     input logic [MEM_WORD_SIZE-1:0] r_data,
 
+
+    // systolic array
     output logic load_weights,
-    output logic signed [DATA_WIDTH-1:0] weights_out [ARRAY_SIZE-1:0];
-    output logic signed [DATA_WIDTH-1:0]       A_out [ARRAY_SIZE-1:0];
+    output logic signed [DATA_WIDTH-1:0] weights_out [ARRAY_SIZE-1:0],
+    output logic signed [DATA_WIDTH-1:0] A_out [ARRAY_SIZE-1:0],
+    output logic result_shift_en [ARRAY_SIZE-1:0],
+
+    // result buffer
+    input logic signed [ACCUM_WIDTH-1:0] result_in [ARRAY_SIZE-1:0][ARRAY_SIZE-1:0],
+
+    output logic signed [ACCUM_WIDTH-1:0] result_out [ARRAY_SIZE-1:0][ARRAY_SIZE-1:0] //temp
 );
     
     // states
@@ -23,7 +31,8 @@ module systolic_controller (
         S_LOAD_WEIGHTS,
         S_READ_A,
         S_COMPUTE,
-        S_GET_RESULTS
+        S_GET_RESULTS,
+        S_WRITE_RESULTS
     } state_t;
 
     state_t state, next;
@@ -100,7 +109,7 @@ module systolic_controller (
                     counter <= counter + 1;
                 end
                 S_GET_RESULTS: begin
-                    counter <= '0;
+                    //counter <= '0;
                 end
 
             endcase
@@ -113,6 +122,7 @@ module systolic_controller (
     always_comb begin
         // default values
         load_weights = '0;
+        result_shift_en = '0;
 
         case (state) 
             S_IDLE: begin
@@ -146,10 +156,22 @@ module systolic_controller (
                     end else begin
                         A_out[row] = '0;
                     end
+
+                    if (counter == 2*ARRAY_SIZE - 2) begin
+                        result_shift_en[0] = 1'b1;
+                    end
                 end  
             end
             S_GET_RESULTS: begin
-                
+                // col i starts shifting at counter == i
+                // colu ends shifting after counter == i + ARRAY_SIZE - 1
+                for (int i = 0; i < ARRAY_SIZE; i++) begin
+                    result_shift_en[i] = (counter >= i) && (counter < i+ARRAY_SIZE);
+                end
+            end
+            S_WRITE_RESULTS: begin
+                // write to SRAM later
+                result_out = result_in; // temp until sram added
             end
         endcase
     end
