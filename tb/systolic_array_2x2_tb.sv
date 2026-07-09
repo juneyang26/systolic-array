@@ -1,4 +1,4 @@
-// testing only the systolic array module
+// testing only the systolic array module for 2x2 example
 
 module systolic_array_tb #(
     parameter int DATA_WIDTH = 8,

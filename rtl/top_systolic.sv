@@ -7,20 +7,31 @@ module top_systolic #(
     input logic clk,
     input logic reset_n,
 
-    input [MEM_WORD_SIZE-1:0] r_data_temp; // temp until sram used
+    input logic [MEM_WORD_SIZE-1:0] r_data_temp, // temp until sram used
+    output logic [ACCUM_WIDTH-1:0] w_data_temp [ARRAY_SIZE-1:0][ARRAY_SIZE-1:0] // temp until sram used
 );
 
     // Wires for controller
-    logic                       load_weights;
-    logic [MEM_WORD_SIZE-1:0]   r_data; // later will be from MEM, but for now just input
-    logic [DATA_WIDTH-1:0]      weights_out [ARRAY_SIZE-1:0];
-    logic [DATA_WIDTH-1:0]            A_out [ARRAY_SIZE-1:0];
-    logic                   result_shift_en [ARRAY_SIZE-1:0];
+    logic                              load_weights;
+    logic signed [MEM_WORD_SIZE-1:0]   r_data; // later will be from MEM, but for now just input
+    logic signed [DATA_WIDTH-1:0]      weights_out [ARRAY_SIZE-1:0];
+    logic signed [DATA_WIDTH-1:0]            A_out [ARRAY_SIZE-1:0];
+    logic                              result_shift_en [ARRAY_SIZE-1:0];
     assign r_data = r_data_temp; // temp
 
     // Wires for systolic array
     logic signed [ACCUM_WIDTH-1:0] c_out [ARRAY_SIZE-1:0];
     logic signed [ACCUM_WIDTH-1:0] result_out [ARRAY_SIZE-1:0][ARRAY_SIZE-1:0];
+    logic signed [ACCUM_WIDTH-1:0] result_write_out [ARRAY_SIZE-1:0][ARRAY_SIZE-1:0]; // later will be to MEM, but for now just output
+    // temporary below
+
+    always_comb begin
+        for (int i = 0; i < ARRAY_SIZE; i++) begin
+            for (int j = 0; j < ARRAY_SIZE; j++) begin
+                w_data_temp[i][j] = result_write_out[i][j];
+            end
+        end
+    end
 
     // MEMORY (later)
 
@@ -39,14 +50,17 @@ module top_systolic #(
         .weights_out(weights_out),
         .A_out(A_out),
         // in/output to result buffer
-        .result_shift_en(result_shift_en)
-        .result_in(result_out)
+        .result_shift_en(result_shift_en),
+        .result_in(result_out),
+
+        //output later to SRAM
+        .result_out(result_write_out)
     );
 
     // SYSTOLIC ARRAY
     systolic_array #(
         .DATA_WIDTH(DATA_WIDTH),
-        .ACCUM_WIDTH(DATA_WIDTH),
+        .ACCUM_WIDTH(ACCUM_WIDTH),
         .ARRAY_SIZE(ARRAY_SIZE)
     ) u_systolic_array (
         .clk(clk),

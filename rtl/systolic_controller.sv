@@ -35,6 +35,7 @@ module systolic_controller #(
         S_WRITE_RESULTS
     } state_t;
 
+    //state_t state = S_IDLE, next = S_IDLE;
     state_t state, next;
 
     logic [DATA_WIDTH-1:0] counter;
@@ -50,7 +51,7 @@ module systolic_controller #(
             S_IDLE:         next = S_READ_WEIGHTS;
             S_READ_WEIGHTS: next = S_LOAD_WEIGHTS;
             S_LOAD_WEIGHTS: if (counter == ARRAY_SIZE - 1) next = S_READ_A;
-            S_READ_A:       next = S_READ_A;
+            S_READ_A:       next = S_COMPUTE;
             S_COMPUTE:      if (counter == 2*ARRAY_SIZE - 2) next = S_GET_RESULTS;
             S_GET_RESULTS:  next = S_IDLE; // change logic once SRAM/addresses included
         
@@ -62,8 +63,15 @@ module systolic_controller #(
         if (!reset_n) begin
             state <= S_IDLE;
             counter <= '0;
-            matrix_A <= '0;
-            matrix_weights <= '0;
+            for (int row = 0; row < ARRAY_SIZE; row++) begin
+                for (int col = 0; col < ARRAY_SIZE; col++) begin
+                    matrix_A[row][col] <= '0;
+                    matrix_weights[row][col] <= '0;
+                end
+            end
+
+            //matrix_A <= '0;
+            //matrix_weights <= '0;
         end
 
         else begin 
@@ -79,6 +87,8 @@ module systolic_controller #(
                     // read and store the weights in registers
                     for (int row = 0; row < ARRAY_SIZE; row++) begin
                         for (int col = 0; col < ARRAY_SIZE; col++) begin
+                            // r_data will arrive packed like: MSB A[1][1], A[1][0], A[0][1], A[0][0] LSB for 2x2 array
+
                             // [<start_bit> +: <width>]  part-select increments from start-bit
                             // [<start_bit> -: <width>]  part-select decrements from start-bit
                             matrix_weights[row][col] <= r_data[(row * ARRAY_SIZE + col) * DATA_WIDTH +: DATA_WIDTH]; // read weights matrix
@@ -122,7 +132,11 @@ module systolic_controller #(
     always_comb begin
         // default values
         load_weights = '0;
-        result_shift_en = '0;
+        for (int b = 0; b < ARRAY_SIZE; b++) begin
+            result_shift_en[b] = 0;
+            weights_out[b] = '0;
+            A_out[b] = '0;
+        end
 
         case (state) 
             S_IDLE: begin
@@ -171,7 +185,12 @@ module systolic_controller #(
             end
             S_WRITE_RESULTS: begin
                 // write to SRAM later
-                result_out = result_in; // temp until sram added
+                for (int i = 0; i < ARRAY_SIZE; i++) begin
+                    for (int j = 0; j < ARRAY_SIZE; j++) begin
+                        result_out[i][j] = result_in[i][j];
+                    end
+                end
+                //result_out = result_in; // temp until sram added
             end
         endcase
     end

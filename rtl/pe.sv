@@ -35,4 +35,5 @@ end
 assign accumulator_out = accum;
 assign a_out = a;
 assign b_out = b;
+
 endmodule
