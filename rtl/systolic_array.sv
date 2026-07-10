@@ -1,3 +1,5 @@
+`timescale 1ns/1ps
+
 module systolic_array #(
     parameter int DATA_WIDTH = 8,
     parameter int ACCUM_WIDTH = 24,
@@ -28,21 +30,38 @@ module systolic_array #(
     generate
         for (row = 0; row < ARRAY_SIZE; row++) begin : gen_rows
             for (col = 0; col < ARRAY_SIZE; col++) begin : gen_cols 
-                logic signed [DATA_WIDTH-1:0] a_in_wire;
-                logic signed [DATA_WIDTH-1:0] b_in_wire;
 
-                if (col == 0) begin
-                    assign a_in_wire = a_in[row];
-                end else begin
-                    assign a_in_wire = a_bus[row][col-1];
-                end
+                ////////// icarus limitation below /////////////
+                // logic signed [DATA_WIDTH-1:0] a_in_wire;
+                // logic signed [DATA_WIDTH-1:0] b_in_wire;
 
-                if (row == 0) begin
-                    assign b_in_wire = b_in[col];
-                end else begin
-                    assign b_in_wire = b_bus[row-1][col];
-                end
+                // if (col == 0) begin
+                //     assign a_in_wire = a_in[row];
+                // end else begin
+                //     assign a_in_wire = a_bus[row][col-1];
+                // end
 
+                // if (row == 0) begin
+                //     assign b_in_wire = b_in[col];
+                // end else begin
+                //     assign b_in_wire = b_bus[row-1][col];
+                // end
+
+                // pe #(
+                //     .DATA_WIDTH(DATA_WIDTH),
+                //     .ACCUM_WIDTH(ACCUM_WIDTH)
+                // )u_pe(
+                //     .clk(clk),
+                //     .reset_n(reset_n),
+                //     .load_weights(load_weights),
+                //     .a_in(a_in_wire),
+                //     .b_in(b_in_wire),
+                //     .accumulator_in(row == 0 ? '0 : accum_bus[row-1][col]),
+                //     .a_out(a_bus[row][col]), 
+                //     .b_out(b_bus[row][col]), 
+                //     .accumulator_out(accum_bus[row][col])
+                // );
+                ////////// icarus limitation above /////////////
                 pe #(
                     .DATA_WIDTH(DATA_WIDTH),
                     .ACCUM_WIDTH(ACCUM_WIDTH)
@@ -50,8 +69,8 @@ module systolic_array #(
                     .clk(clk),
                     .reset_n(reset_n),
                     .load_weights(load_weights),
-                    .a_in(a_in_wire),
-                    .b_in(b_in_wire),
+                    .a_in(col == 0 ? a_in[row] : a_bus[row][col-1]),
+                    .b_in(row == 0 ? b_in[col] : b_bus[row-1][col]),
                     .accumulator_in(row == 0 ? '0 : accum_bus[row-1][col]),
                     .a_out(a_bus[row][col]), 
                     .b_out(b_bus[row][col]), 

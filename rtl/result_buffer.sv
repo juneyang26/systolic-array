@@ -1,11 +1,13 @@
+`timescale 1ns/1ps
+
 module result_buffer #(
-    parameter int DATA_WIDTH = 8,
+    //parameter int DATA_WIDTH = 8,
     parameter int ACCUM_WIDTH = 24,
     parameter int ARRAY_SIZE = 2
 ) (
     input logic clk,
     input logic reset_n,
-    input logic shift_en [ARRAY_SIZE-1:0], // shift enable signal for each col
+    input logic [ARRAY_SIZE-1:0] shift_en, // shift enable signal for each col
     input logic signed [ACCUM_WIDTH-1:0] accumulator_in [ARRAY_SIZE-1:0],
 
     output logic signed [ACCUM_WIDTH-1:0] result_out [ARRAY_SIZE-1:0][ARRAY_SIZE-1:0] // resultant matrix;
