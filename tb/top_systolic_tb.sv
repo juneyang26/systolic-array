@@ -30,8 +30,10 @@ module top_systolic_tb #(
     end
 
     initial begin
-        $dumpfile("wave.vcd");
-        $dumpvars(0, top_systolic_tb);
+        //$dumpfile("wave.vcd");
+        //$dumpvars(0, top_systolic_tb);
+        $shm_open("waves.shm");
+        $shm_probe("ACM");
 
     end
 
