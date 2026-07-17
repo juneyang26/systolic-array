@@ -4,10 +4,11 @@
 
 
 # ---------------- include below --------------------
-#	initial begin
+#
 #        $shm_open("waves.shm");
 #        $shm_probe("ACM");
-#    end
+#
+# ---------------------------------------------------
 
 CURRENT_DIR := $(shell pwd)
 WORKSPACE	:= $(CURRENT_DIR)/WORKSPACE

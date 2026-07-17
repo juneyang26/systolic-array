@@ -30,10 +30,10 @@ module systolic_controller #(
     typedef enum logic [2:0] {
         S_IDLE,             // 000
         S_READ_WEIGHTS,     // 001
-        S_LOAD_WEIGHTS,     // 010
-        S_READ_A,           // 011
-        S_COMPUTE,          // 100
-        S_GET_RESULTS,      // 101
+        S_LOAD_WEIGHTS,     // 010 (N cycles to load all weights)
+        S_READ_A,           // 011 
+        S_COMPUTE,          // 100 (2N - 1 cycles to compute)
+        S_GET_RESULTS,      // 101 (2N - 2 cycle to shift out all)
         S_WRITE_RESULTS     // 110
     } state_t;
 
@@ -63,7 +63,9 @@ module systolic_controller #(
             S_LOAD_WEIGHTS: if (weights_counter == WEIGHTS_COUNTER_MAX) next = S_READ_A;
             S_READ_A:       next = S_COMPUTE;
             S_COMPUTE:      if (int'(compute_counter) == 2*ARRAY_SIZE - 2) next = S_GET_RESULTS;
-            S_GET_RESULTS:  if (int'(shift_counter) == 2*ARRAY_SIZE-2) next = S_WRITE_RESULTS; // change logic once SRAM/addresses included
+            S_GET_RESULTS:  if (int'(shift_counter) == 2*ARRAY_SIZE-2) next = S_WRITE_RESULTS; // shift counter starts at 1, since first shift during last compute cycle
+            // change read timing & add read/write addresses once SRAM included
+            // current assump: reads within 1 cycle w/o SRAM
         
             default:        next = S_IDLE;
         endcase
@@ -90,8 +92,10 @@ module systolic_controller #(
             state <= next; // goto next state after
             case (state) 
                 S_IDLE: begin
-                    //if (ready)
-                    // nothing for now
+                    compute_counter <= '0;
+                    weights_counter <= '0;
+                    shift_counter <= 1;
+                    
                 end
                 S_READ_WEIGHTS: begin
                     //matrix_weights[0][0] = r_data[7:0];
