@@ -33,7 +33,7 @@ module systolic_controller #(
         S_LOAD_WEIGHTS,     // 010 (N cycles to load all weights)
         S_READ_A,           // 011 
         S_COMPUTE,          // 100 (2N - 1 cycles to compute)
-        S_GET_RESULTS,      // 101 (2N - 2 cycle to shift out all)
+        S_GET_RESULTS,      // 101 (N-1 cycle to shift out all)
         S_WRITE_RESULTS     // 110
     } state_t;
 
@@ -43,7 +43,7 @@ module systolic_controller #(
     localparam int COMPUTE_COUNTER_WIDTH = $clog2(2*ARRAY_SIZE);
     localparam int WEIGHTS_COUNTER_WIDTH = $clog2(ARRAY_SIZE);
     localparam logic [WEIGHTS_COUNTER_WIDTH-1:0] WEIGHTS_COUNTER_MAX = WEIGHTS_COUNTER_WIDTH'(ARRAY_SIZE - 1); // for comparison
-    localparam logic [COMPUTE_COUNTER_WIDTH-1:0] COMPUTE_COUNTER_MAX = COMPUTE_COUNTER_WIDTH'(2*ARRAY_SIZE - 2); // for comparison
+    //localparam logic [COMPUTE_COUNTER_WIDTH-1:0] COMPUTE_COUNTER_MAX = COMPUTE_COUNTER_WIDTH'(2*ARRAY_SIZE - 1); // for comparison
 
     // counters
     logic [COMPUTE_COUNTER_WIDTH-1:0] compute_counter;
@@ -62,8 +62,8 @@ module systolic_controller #(
             S_READ_WEIGHTS: next = S_LOAD_WEIGHTS;
             S_LOAD_WEIGHTS: if (weights_counter == WEIGHTS_COUNTER_MAX) next = S_READ_A;
             S_READ_A:       next = S_COMPUTE;
-            S_COMPUTE:      if (int'(compute_counter) == 2*ARRAY_SIZE - 2) next = S_GET_RESULTS;
-            S_GET_RESULTS:  if (int'(shift_counter) == 2*ARRAY_SIZE-2) next = S_WRITE_RESULTS; // shift counter starts at 1, since first shift during last compute cycle
+            S_COMPUTE:      if (int'(compute_counter) == 2*ARRAY_SIZE - 1 - 1) next = S_GET_RESULTS;
+            S_GET_RESULTS:  if (int'(shift_counter) == ARRAY_SIZE - 1) next = S_WRITE_RESULTS; 
             // change read timing & add read/write addresses once SRAM included
             // current assump: reads within 1 cycle w/o SRAM
         
@@ -76,7 +76,7 @@ module systolic_controller #(
             state <= S_IDLE;
             compute_counter <= '0;
             weights_counter <= '0;
-            shift_counter <= 1;
+            shift_counter <= 0;
             for (int row = 0; row < ARRAY_SIZE; row++) begin
                 for (int col = 0; col < ARRAY_SIZE; col++) begin
                     matrix_A[row][col] <= '0;
@@ -94,7 +94,7 @@ module systolic_controller #(
                 S_IDLE: begin
                     compute_counter <= '0;
                     weights_counter <= '0;
-                    shift_counter <= 1;
+                    shift_counter <= 0;
                     
                 end
                 S_READ_WEIGHTS: begin
@@ -196,16 +196,35 @@ module systolic_controller #(
                         A_out[row] = '0;
                     end
 
+
+                    for (int col = 0; col < ARRAY_SIZE; col++) begin
+                        result_shift_en[col] = (int'(compute_counter) > (ARRAY_SIZE-1 + col));
+                    end
+
+                    /*
+                    for (int col = 0; col < ARRAY_SIZE; col++) begin
+                        result_shift_en[col] = (int'(compute_counter) >= col + ARRAY_SIZE-1) && (int'(compute_counter) < )
+                    end
+                    */
+                    /*
                     if (compute_counter == COMPUTE_COUNTER_MAX) begin
                         result_shift_en[0] = 1'b1;
                     end
+                    */
+
                 end  
             end
             S_GET_RESULTS: begin
                 // col i starts shifting at counter == i
                 // colu ends shifting after counter == i + ARRAY_SIZE - 1
+                /*
                 for (int i = 0; i < ARRAY_SIZE; i++) begin
                     result_shift_en[i] = (int'(shift_counter) >= i) && (int'(shift_counter) < i+ARRAY_SIZE);
+                end
+                */
+
+                for (int col = 0; col < ARRAY_SIZE; col++) begin
+                    result_shift_en[col] = (int'(shift_counter) <= col);
                 end
             end
             S_WRITE_RESULTS: begin

@@ -2,7 +2,7 @@
 `timescale 1ns/1ps
 
 module top_systolic_tb #(
-    parameter int MEM_WORD_SIZE = 64,
+    parameter int MEM_WORD_SIZE = 128, // supports up to 4x4
     parameter int DATA_WIDTH = 8,
     parameter int ARRAY_SIZE = 2,
     parameter int ACCUM_WIDTH = 24
@@ -87,6 +87,7 @@ module top_systolic_tb #(
             errors = 0;
             @(negedge clk_tb); // middle of read_weights cycle
 
+            /*
             status = $fscanf(fa,"%d %d %d %d",
                 A_matrix[0][0], A_matrix[0][1],
                 A_matrix[1][0], A_matrix[1][1]);
@@ -98,6 +99,35 @@ module top_systolic_tb #(
             status = $fscanf(fc,"%d %d %d %d",
                 C_expected[0][0], C_expected[0][1],
                 C_expected[1][0], C_expected[1][1]);
+
+            if (status != ARRAY_SIZE*ARRAY_SIZE) begin
+                break;
+            end
+            */
+
+            // read A matrix
+            status = 0;
+            for (int row = 0; row < ARRAY_SIZE; row++) begin
+                for (int col = 0; col < ARRAY_SIZE; col++) begin
+                    status += $fscanf(fa, "%d", A_matrix[row][col]);
+                end
+            end
+
+            // read B matrix
+            status = 0;
+            for (int row = 0; row < ARRAY_SIZE; row++) begin
+                for (int col = 0; col < ARRAY_SIZE; col++) begin
+                    status += $fscanf(fb, "%d", B_matrix[row][col]);
+                end
+            end
+
+            // read expected matrix
+            status = 0;
+            for (int row = 0; row < ARRAY_SIZE; row++) begin
+                for (int col = 0; col < ARRAY_SIZE; col++) begin
+                    status += $fscanf(fc, "%d", C_expected[row][col]);
+                end
+            end
 
             if (status != ARRAY_SIZE*ARRAY_SIZE) begin
                 break;
@@ -122,8 +152,11 @@ module top_systolic_tb #(
             end
 
             @(posedge clk_tb); // read A
+            //repeat(2*ARRAY_SIZE - 1) @(posedge clk_tb); // compute
+            //repeat(ARRAY_SIZE - 1) @(posedge clk_tb); // shift out results
+
             repeat(2*ARRAY_SIZE - 1) @(posedge clk_tb); // compute
-            repeat(2*ARRAY_SIZE - 2) @(posedge clk_tb); // shift out results
+            repeat(ARRAY_SIZE) @(posedge clk_tb); // shift out results
 
             @(negedge clk_tb); // middle of write_results cycle
             $display("Checking result for test %0d at cycle %0d", test_num, cycle_count);
