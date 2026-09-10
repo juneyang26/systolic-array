@@ -2,8 +2,6 @@
 
 <!-- ABOUT THE PROJECT -->
 ## About The Project
-Brief intro for the time being
-
 Creating an ASIC capable of performing NxN int8 matrix multiplication.
 RTL and test bench generation is parameterizable by the dimension N.
 Since the design is parameterizable, the controller is a mixture of a FSM and counters.
@@ -25,6 +23,6 @@ Here's a blank template to get started. To avoid retyping too much info, do a se
 - [x] Create test bench automation
 - [x] Verification (N = 2, 3, 4)
 - [ ] Start RTL to GDSII flow
-- [ ] Convert handdrawn schematic into digital forma
+- [ ] Convert hand-drawn schematic into digital schematic
 - [ ] Incorporate SRAM
 
